@@ -13,7 +13,8 @@
 function ContentAssist(viewer, processor, options) {
 	this.viewer = viewer;
 	this.options = {
-		visible_items: 10
+		visible_items: 10,
+		xhr_url: null
 	};
 	
 	this.setProcessor(processor);
@@ -48,9 +49,24 @@ function ContentAssist(viewer, processor, options) {
 		that = this;
 		
 	this.hidePopup();
+
+	this.xhr = new XMLHttpRequest();
 	
 	viewer.addEvent('modify', function(/* Event */ evt) {
-		that.showContentAssist(evt);
+		if (that.options.xhr_url) {
+			that.xhr.abort();
+			that.xhr = new XMLHttpRequest();
+			that.xhr.onreadystatechange = function () {
+				if (that.xhr.readyState == 4 && that.xhr.status == 200) {
+					that.processor.setWords(JSON.parse(that.xhr.responseText));
+					that.showContentAssist(evt);
+				}
+			}
+			that.xhr.open('GET', that.options.xhr_url + encodeURIComponent(that.viewer.getContent()), true);
+			that.xhr.send(null);
+		} else {
+			that.showContentAssist(evt);
+		}
 	});
 	
 	var is_opera = !!window.opera,
